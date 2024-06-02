@@ -15,8 +15,9 @@ for currency_pair in currency_pairs:
     forex_data = pd.concat([forex_data, data], axis=1)
     forex_data.dropna(inplace=True)
 
-#returns a csv with cointegration results
-results_list = []
+#returns a csv with cointegration results(engle granger cointegration test)
+#set P value accordingly, it is set as 0.05 here
+coint_r = []
 for pair in currency_pairs:
     x = forex_data[pair]
     for other_pair in currency_pairs:
@@ -28,6 +29,6 @@ for pair in currency_pairs:
                 cointegration = 'Cointegrated'
             else:
                 cointegration = 'Non-Cointegrated'
-            results_list.append({'Currency Pair 1': pair, 'Currency Pair 2': other_pair, 'P-Value': p_value, 'Cointegration': cointegration})
-results_df = pd.DataFrame(results_list)
-results_df.to_csv('C:/Quant/CSV/cointegration_results.csv', index=False)
+            coint_r.append({'Currency Pair 1': pair, 'Currency Pair 2': other_pair, 'P-Value': p_value, 'Cointegration': cointegration})
+results_coint = pd.DataFrame(coint_r)
+results_coint.to_csv('C:/Quant/CSV/cointegration_results.csv', index=False)
