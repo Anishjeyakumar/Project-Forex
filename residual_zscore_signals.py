@@ -1,51 +1,40 @@
-#Enter the currency pair
-currency_pairs = [
- "USDCHF=X", "USDNOK=X"
-]
-start_date = '2021-01-01'
-end_date = '2021-12-30'
+import numpy as np
+import pandas as pd
+import yfinance as yf
+import statsmodels.api as sm
 
-forex_data = pd.DataFrame()
-for currency_pair in currency_pairs:
-    
-    data = yf.download(currency_pair, start=start_date, end=end_date)['Adj Close']
-    data.rename(currency_pair, inplace=True)
-    forex_data = pd.concat([forex_data, data], axis=1)
-    forex_data.dropna(inplace=True)
+# Fetch historical Forex data
+def fetch_data(pairs, start_date, end_date):
+    data = yf.download(pairs, start=start_date, end=end_date)
+    return data['Adj Close']
 
-X = forex_data['USDCHF=X']
-y = forex_data['USDNOK=X']
+# Define the currency pairs and date range
+currency_pairs = ['EURUSD=X', 'GBPUSD=X']
+start_date = '2023-01-01'
+end_date = '2023-01-01'
 
-# Fitting the regression model
-X = sm.add_constant(X)  
-model = sm.OLS(y, X)
-results = model.fit()
+# Fetch the data
+data = fetch_data(currency_pairs, start_date, end_date)
 
-# calculating residuals and z-score
-predicted_values = results.predict(X)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
-Residuals = y - predicted_values
+# Handle missing values by dropping rows with NaNs
+data = data.dropna()
 
-# Perform ADF test on residuals
-adf_result = adfuller(Residuals)
+# Perform OLS regression
+X = sm.add_constant(data['EURUSD=X'])
+model = sm.OLS(data['GBPUSD=X'], X).fit()
+spread = data['GBPUSD=X'] - model.predict(X)
 
-# Extract ADF test statistic and p-value
-adf_statistic = adf_result[0]
-p_value = adf_result[1]
-if adf_statistic < adf_result[4]['5%'] and p_value < 0.05:
-    print("Reject the null hypothesis. Residuals are stationary.")
-else:
-    print("Fail to reject the null hypothesis. Residuals are non-stationary.")
+# Trade signals
+mean = spread.mean()
+std = spread.std()
+entry_threshold = 2 * std
+exit_threshold = 0.5 * std
 
-forex_data['Residuals']=Residuals    
-# Calculate z-scores
-mean_u = np.mean(forex_data['Residuals'])
-std_u = np.std(forex_data['Residuals'])
-forex_data['Z-Score'] = (forex_data['Residuals'] - mean_u) / std_u
+signals = np.where(spread > mean + entry_threshold, -1, 0)
+signals = np.where(spread < mean - entry_threshold, 1, signals)
+signals = np.where(abs(spread - mean) < exit_threshold, 0, signals)
 
-Signal=[]
-for x in forex_data['Residuals']:
-    if x > 1:
-        Signal.append("short USDCHF,long USDNOK")
-    if x < 1:
-        Signal.append("long USDCHF,short USDNOK")
-forex_data['Signal']=Signal
+# Output the signals
+print("Signals:")
+print(signals)
+
